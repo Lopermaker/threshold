@@ -1,0 +1,20 @@
+const { chromium } = require('playwright');
+const path = require('path');
+const { spawn } = require('child_process');
+(async () => {
+  const server = spawn('python3', ['-m', 'http.server', '8124', '--bind', '127.0.0.1'], { cwd:path.resolve(__dirname, '../dist'), stdio:'ignore' });
+  await new Promise(r => setTimeout(r, 800));
+  const browser = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium', args:['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const page = await browser.newPage({ viewport:{ width:1280, height:720 } });
+  page.on('pageerror', e => console.log('pageerror', e.message));
+  await page.goto('http://127.0.0.1:8124/threshold.html');
+  await page.waitForTimeout(2500);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__threshold.mode === 'game', null, { timeout:60000 });
+  await page.mouse.move(1000, 330);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  console.log(await page.evaluate(() => { const a = window.__threshold, g = a.game, w = g.weapon(); return JSON.stringify({ btn:a.input.mouse.buttons, cool:w.cool, mag:w.mag, reloadT:w.reloadT, switchT:g.p.switchT, sprint:g.p.sprinting, shots:g.stats.shots, auto:w.s.auto, interval:w.s.interval }); }));
+  await page.mouse.up();
+  await browser.close(); server.kill();
+})();
